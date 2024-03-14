@@ -101,8 +101,13 @@ const FeedFetcher = () => {
     try {
       // axios.disable("etag");
       const response = await axios.post(
+<<<<<<< HEAD
         // "https://optimum-koala-informed.ngrok-free.app/api/data",
         "http://localhost:4000/api/data",
+=======
+        //"https://optimum-koala-informed.ngrok-free.app/api/data",
+         "http://localhost:4000/api/data",
+>>>>>>> 4f056a328dc299c68682482afe1010037fa3b847
         {
           url: url,
         }

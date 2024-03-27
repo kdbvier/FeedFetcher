@@ -19,6 +19,7 @@ import {
   Select,
   TextField,
   Typography,
+  ListItemButton,
 } from "@mui/material";
 import { Icons, toast } from "react-toastify";
 import logo from "../logo.svg";
@@ -29,6 +30,7 @@ import {
   GridCheckIcon,
   GridCloseIcon,
 } from "@mui/x-data-grid";
+import emotionStyled from "@emotion/styled";
 
 const Item = styled(Paper)(({ theme }) => ({
   backgroundColor: theme.palette.mode === "dark" ? "#1A2027" : "#fff",
@@ -37,6 +39,20 @@ const Item = styled(Paper)(({ theme }) => ({
   textAlign: "center",
   color: theme.palette.text.secondary,
 }));
+
+const FeedContainer = emotionStyled.div`
+  position: relative;
+  width: 100%;
+  .list-autocomplete {
+    border: 1px solid grey;
+    border-radius: 5px;
+    position: absolute;
+    width: 100%;
+    background: white;
+    z-index: 100;
+    display: none;
+  }
+`;
 
 const FeedFetcher = () => {
   const [pastData, setPastData] = useState([]);
@@ -84,6 +100,7 @@ const FeedFetcher = () => {
     }
     if (obj.length === 0) return;
     const temp = Object.keys(obj);
+    console.log("temp: ", temp);
     setRecord(obj);
     setList(temp);
     if (temp[0] === "0") setIDlist(Object.keys(obj[temp[0]]));
@@ -107,16 +124,26 @@ const FeedFetcher = () => {
           url: url,
         }
       );
-      // console.log(response.data);
+      console.log("response data", response.data);
       // console.log(Object.keys(response.data));
       filetered(response.data);
       setFeedData(response.data);
+      const urlsJSON = localStorage.getItem("urls");
+      let urls = [];
+      if (urlsJSON) {
+        urls = JSON.parse(urlsJSON);
+      }
+      if (!urls.includes(url)) {
+        localStorage.setItem("urls", JSON.stringify([...urls, url]));
+      }
+
       setID("");
       setSelected("");
       setNew([]);
       // console.log(filetered(response.data));
       setIsLoading(false);
     } catch (error) {
+      console.log("error: ", error);
       alert("Invalid URL or Internal Server Error");
       // console.error("Error fetching feed:", error);
       setIsLoading(false);
@@ -124,14 +151,13 @@ const FeedFetcher = () => {
     }
   };
 
-  useEffect(() => {
-    // console.log(selected);
-    const temp = record ? record[selected] : null;
-    // console.log(temp);
-    if (temp) filetered(temp);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected]);
-
+  // useEffect(() => {
+  //   // console.log(selected);
+  //   const temp = record ? record[selected] : null;
+  //   // console.log(temp);
+  //   if (temp) filetered(temp);
+  // }, [selected, record]);
+  console.log("selected: ", selected, list);
   return (
     <Box bgcolor="#fff">
       <Box sx={{ flexGrow: 1 }} style={{ padding: "30px" }}>
@@ -148,22 +174,30 @@ const FeedFetcher = () => {
                 gap: "20px",
               }}
             >
-              <TextField
-                id="outlined-basic"
-                label="Enter URL"
-                variant="outlined"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                style={{ width: "100%" }}
-              />
+              <FeedContainer>
+                <TextField
+                  id="outlined-basic"
+                  label="FEED"
+                  variant="outlined"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  style={{ width: "100%" }}
+                />
+                <List component="nav" className="list-autocomplete">
+                  <ListItemButton>abcde</ListItemButton>
+                  <ListItemButton>abcde</ListItemButton>
+                  <ListItemButton>abcde</ListItemButton>
+                  <ListItemButton>abcde</ListItemButton>
+                </List>
+              </FeedContainer>
               <Button variant="contained" onClick={sendUrlToServer}>
-                Send URL to Server
+                FETCH
               </Button>
             </Box>
           </Grid>
         </Grid>
         <Grid container spacing={2} mt={3}>
-          <Grid item xs={4}>
+          <Grid item xs={3}>
             <Item>
               <Box m={3}>
                 <Breadcrumbs aria-label="breadcrumb">
@@ -211,20 +245,25 @@ const FeedFetcher = () => {
                   Reset
                 </Button>
                 <FormControl fullWidth size="small">
-                  <InputLabel id="demo-simple-select-label">RECORD</InputLabel>
+                  <InputLabel id="demo-simple-select-label">Record</InputLabel>
                   <Select
                     labelId="demo-simple-select-label"
                     id="demo-simple-select"
                     value={selected}
                     label="Age"
                     onChange={(e) => {
+                      console.log("selected------: ", e.target.value, history);
                       setHistory([...history, e.target.value]);
                       setSelected(e.target.value);
                     }}
                   >
                     {list &&
-                      list.map((v) => {
-                        return <MenuItem value={v}>{v}</MenuItem>;
+                      list.map((v, index) => {
+                        return (
+                          <MenuItem key={index} value={v}>
+                            {v}
+                          </MenuItem>
+                        );
                       })}
                   </Select>
                 </FormControl>
@@ -241,11 +280,17 @@ const FeedFetcher = () => {
                     id="demo-simple-select"
                     label="Age"
                     value={id}
-                    onChange={(e) => setID(e.target.value)}
+                    onChange={(e) => {
+                      setID(e.target.value);
+                    }}
                   >
                     {idlist &&
-                      idlist.map((v) => {
-                        return <MenuItem value={v}>{v}</MenuItem>;
+                      idlist.map((v, index) => {
+                        return (
+                          <MenuItem key={index} value={v}>
+                            {v}
+                          </MenuItem>
+                        );
                       })}
                   </Select>
                 </FormControl>
@@ -263,25 +308,11 @@ const FeedFetcher = () => {
                       collapsed
                     />
                   )}
-
-                  {newdata.length ? (
-                    <>
-                      <h4>New JSON</h4>
-                      <ReactJson
-                        src={newdata}
-                        theme="harmonic"
-                        style={{ textAlign: "left" }}
-                        collapsed
-                      />
-                    </>
-                  ) : (
-                    <></>
-                  )}
                 </>
               )}
             </Item>
           </Grid>
-          <Grid item xs={8}>
+          <Grid item xs={6}>
             <Item>
               <Box
                 display={"flex"}
@@ -320,22 +351,35 @@ const FeedFetcher = () => {
                   SAVE
                 </Button>
               </Box>
-              {/* {feedData && <ProTable jons_data={feedData} />} */}
-
-              <>
-                {/* <pre>
-                    {id && record && <TrafficEventTable data={record} />}
-                  </pre> */}
-                {id && record && (
-                  <MuiTable
-                    data={record}
-                    identifier={id}
-                    pastData={pastData}
-                    setNew={setNew}
-                  />
-                )}
-                {/* {id && record && <TempTable data={record} />} */}
-              </>
+              {id && record && (
+                <MuiTable
+                  data={record}
+                  identifier={id}
+                  pastData={pastData}
+                  setNew={setNew}
+                />
+              )}
+            </Item>
+          </Grid>
+          <Grid item xs={3}>
+            <Item>
+              {isloading ? (
+                <p>Loading feed data...</p>
+              ) : (
+                <>
+                  <h4>New JSON</h4>
+                  {newdata.length ? (
+                    <ReactJson
+                      src={newdata}
+                      theme="harmonic"
+                      style={{ textAlign: "left" }}
+                      collapsed
+                    />
+                  ) : (
+                    <></>
+                  )}
+                </>
+              )}
             </Item>
           </Grid>
         </Grid>

@@ -20,6 +20,9 @@ import {
   TextField,
   Typography,
   ListItemButton,
+  Checkbox,
+  FormGroup,
+  FormControlLabel,
 } from "@mui/material";
 import { Icons, toast } from "react-toastify";
 import logo from "../logo.svg";
@@ -50,6 +53,8 @@ const FeedContainer = emotionStyled.div`
     width: 100%;
     background: white;
     z-index: 100;
+  }
+  .invisible {
     display: none;
   }
 `;
@@ -58,11 +63,13 @@ const FeedFetcher = () => {
   const [pastData, setPastData] = useState([]);
   const [pastHistroy, setPastHistory] = useState([]);
   const [newdata, setNew] = useState([]);
-
   const [url, setUrl] = useState("");
   const [isloading, setIsLoading] = useState(false);
   const [feedData, setFeedData] = useState(null);
   const [history, setHistory] = useState(["Main"]);
+  const [showUrlHistory, setShowUrlHistory] = useState(false);
+  const [hideLeft, setHideLeft] = useState(false);
+  const [hideRight, setHideRight] = useState(false);
 
   const [record, setRecord] = useState(null);
   const [list, setList] = useState(null);
@@ -70,6 +77,17 @@ const FeedFetcher = () => {
   const [selected, setSelected] = React.useState(null);
   const [id, setID] = useState("");
   const [idlist, setIDlist] = useState("");
+  const getHistoryURLs = () => {
+    const urlsJSON = localStorage.getItem("urls");
+    let urls = [];
+    if (urlsJSON) {
+      urls = JSON.parse(urlsJSON);
+    }
+    console.log("urls: ", urls);
+    return urls;
+  };
+  const urlHistory = getHistoryURLs();
+  console.log("urlHistory: ", urlHistory);
 
   const jsonparse = (event, route) => {
     if (typeof event !== "object" || event == null)
@@ -100,11 +118,9 @@ const FeedFetcher = () => {
     }
     if (obj.length === 0) return;
     const temp = Object.keys(obj);
-    console.log("temp: ", temp);
     setRecord(obj);
     setList(temp);
     if (temp[0] === "0") setIDlist(Object.keys(obj[temp[0]]));
-    // console.log(obj, temp);
   };
 
   const sendUrlToServer = async () => {
@@ -124,8 +140,6 @@ const FeedFetcher = () => {
           url: url,
         }
       );
-      console.log("response data", response.data);
-      // console.log(Object.keys(response.data));
       filetered(response.data);
       setFeedData(response.data);
       const urlsJSON = localStorage.getItem("urls");
@@ -136,11 +150,9 @@ const FeedFetcher = () => {
       if (!urls.includes(url)) {
         localStorage.setItem("urls", JSON.stringify([...urls, url]));
       }
-
       setID("");
       setSelected("");
       setNew([]);
-      // console.log(filetered(response.data));
       setIsLoading(false);
     } catch (error) {
       console.log("error: ", error);
@@ -151,19 +163,31 @@ const FeedFetcher = () => {
     }
   };
 
-  // useEffect(() => {
-  //   // console.log(selected);
-  //   const temp = record ? record[selected] : null;
-  //   // console.log(temp);
-  //   if (temp) filetered(temp);
-  // }, [selected, record]);
-  console.log("selected: ", selected, list);
   return (
     <Box bgcolor="#fff">
       <Box sx={{ flexGrow: 1 }} style={{ padding: "30px" }}>
         <Grid container spacing={2}>
           <Grid item xs={3}>
-            <img src={logo} className="App-logo" alt="logo" />
+            <FormGroup row>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={!hideLeft}
+                    onChange={() => setHideLeft(!hideLeft)}
+                  />
+                }
+                label="Show Left Bar"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={!hideRight}
+                    onChange={() => setHideRight(!hideRight)}
+                  />
+                }
+                label="Show Right Bar"
+              />
+            </FormGroup>
           </Grid>
           <Grid item xs={9}>
             <Box
@@ -182,12 +206,21 @@ const FeedFetcher = () => {
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   style={{ width: "100%" }}
+                  onClick={() => {
+                    setShowUrlHistory(!showUrlHistory);
+                  }}
                 />
-                <List component="nav" className="list-autocomplete">
-                  <ListItemButton>abcde</ListItemButton>
-                  <ListItemButton>abcde</ListItemButton>
-                  <ListItemButton>abcde</ListItemButton>
-                  <ListItemButton>abcde</ListItemButton>
+                <List
+                  component="nav"
+                  className={`list-autocomplete ${
+                    !showUrlHistory && "invisible"
+                  }`}
+                >
+                  {urlHistory.map((_url, index) => (
+                    <ListItemButton onClick={() => setUrl(_url)} key={index}>
+                      {_url}
+                    </ListItemButton>
+                  ))}
                 </List>
               </FeedContainer>
               <Button variant="contained" onClick={sendUrlToServer}>
@@ -197,7 +230,7 @@ const FeedFetcher = () => {
           </Grid>
         </Grid>
         <Grid container spacing={2} mt={3}>
-          <Grid item xs={3}>
+          <Grid item xs={3} display={`${hideLeft && "none"}`}>
             <Item>
               <Box m={3}>
                 <Breadcrumbs aria-label="breadcrumb">
@@ -312,7 +345,7 @@ const FeedFetcher = () => {
               )}
             </Item>
           </Grid>
-          <Grid item xs={6}>
+          <Grid item xs={6 + 3 * hideLeft + 3 * hideRight}>
             <Item>
               <Box
                 display={"flex"}
@@ -361,7 +394,7 @@ const FeedFetcher = () => {
               )}
             </Item>
           </Grid>
-          <Grid item xs={3}>
+          <Grid item xs={3} display={`${hideRight && "none"}`}>
             <Item>
               {isloading ? (
                 <p>Loading feed data...</p>

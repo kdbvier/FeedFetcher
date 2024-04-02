@@ -1,4 +1,4 @@
-const { PutCommand } = require("@aws-sdk/lib-dynamodb");
+const { PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const documentClient = require("./dynamodbClient");
 const express = require("express");
 const axios = require("axios");
@@ -40,11 +40,36 @@ app.post("/api/data", async (req, res) => {
   try {
     const response = await axios.get(url);
     const urlHash = getHash(url);
+
     try {
       const pastData = fs.readFileSync(`database/${urlHash}.json`);
-      res.send({ newData: response.data, pastData });
+      const getInfo = await documentClient.send(
+        new GetCommand({
+          TableName,
+          Key: {
+            feed: urlHash,
+          },
+        })
+      );
+      let record = [];
+      let identifier = "";
+      if (getInfo.Item) {
+        record = getInfo.Item.record;
+        identifier = getInfo.Item.identifier;
+      }
+      res.send({
+        newData: response.data,
+        pastData: JSON.parse(pastData),
+        record,
+        identifier,
+      });
     } catch (err) {
-      res.send({ newData: response.data, pastData: [] });
+      res.send({
+        newData: response.data,
+        pastData: [],
+        record: [],
+        identifier: "",
+      });
     }
   } catch (error) {
     console.error("Error fetching data:", error.message);
@@ -54,10 +79,11 @@ app.post("/api/data", async (req, res) => {
 
 app.post("/api/register", async (req, res) => {
   try {
-    const { record, identifier, outputJson, feed } = req.body;
+    const { record, identifier, feed } = req.body;
+    const response = await axios.get(feed);
     const urlHash = getHash(feed);
     const outputFile = path.join("database", `${urlHash}.json`);
-    const jsonString = JSON.stringify(outputJson, null, 2);
+    const jsonString = JSON.stringify(response.data, null, 2);
     fs.writeFile(outputFile, jsonString, (err) => {
       if (err) {
         console.log("Error writing file:", err);
@@ -69,7 +95,7 @@ app.post("/api/register", async (req, res) => {
       new PutCommand({
         TableName,
         Item: {
-          feed,
+          feed: urlHash,
           record,
           identifier,
         },

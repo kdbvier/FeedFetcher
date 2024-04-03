@@ -23,6 +23,7 @@ import {
   Checkbox,
   FormGroup,
   FormControlLabel,
+  Stack,
 } from "@mui/material";
 import { Icons, toast } from "react-toastify";
 import logo from "../logo.svg";
@@ -34,6 +35,8 @@ import {
   GridCloseIcon,
 } from "@mui/x-data-grid";
 import emotionStyled from "@emotion/styled";
+
+const backendUrl = "http://ec2-44-203-114-73.compute-1.amazonaws.com:4000";
 
 const Item = styled(Paper)(({ theme }) => ({
   backgroundColor: theme.palette.mode === "dark" ? "#1A2027" : "#fff",
@@ -61,20 +64,17 @@ const FeedContainer = emotionStyled.div`
 
 const FeedFetcher = () => {
   const [pastData, setPastData] = useState([]);
-  const [pastHistroy, setPastHistory] = useState([]);
+  const [pastFiltered, setPastFiltered] = useState([]);
   const [newdata, setNew] = useState([]);
   const [url, setUrl] = useState("");
   const [isloading, setIsLoading] = useState(false);
-  const [feedData, setFeedData] = useState(null);
-  const [history, setHistory] = useState(["Main"]);
+  const [feedData, setFeedData] = useState([]);
+  const [filtered, setFiltered] = useState([]);
   const [showUrlHistory, setShowUrlHistory] = useState(false);
   const [hideLeft, setHideLeft] = useState(false);
   const [hideRight, setHideRight] = useState(false);
 
-  const [record, setRecord] = useState(null);
-  const [list, setList] = useState(null);
-
-  const [selected, setSelected] = React.useState(null);
+  const [record, setRecord] = useState([]);
   const [id, setID] = useState("");
   const [idlist, setIDlist] = useState("");
   const getHistoryURLs = () => {
@@ -83,65 +83,26 @@ const FeedFetcher = () => {
     if (urlsJSON) {
       urls = JSON.parse(urlsJSON);
     }
-    console.log("urls: ", urls);
     return urls;
   };
   const urlHistory = getHistoryURLs();
-  console.log("urlHistory: ", urlHistory);
-
-  const jsonparse = (event, route) => {
-    if (typeof event !== "object" || event == null)
-      return {
-        value: event == null ? "Null" : event,
-        route: route,
-      };
-    let result = [];
-    for (const key in event) {
-      let temp = jsonparse(event[key], [...route, key]);
-      if (temp.value == undefined) result = [...result, ...temp];
-      else result.push(temp);
-    }
-    return result;
-  };
-
-  const filetered = (obj) => {
-    if (!obj) return [];
-    // console.log("here", obj, typeof obj);
-
-    if (typeof obj === "string" || typeof obj === "number") {
-      // console.log(selected);
-      setList([selected]);
-      setIDlist([]);
-      setRecord([obj]);
-      // setList(selected);
-      return;
-    }
-    if (obj.length === 0) return;
-    const temp = Object.keys(obj);
-    setRecord(obj);
-    setList(temp);
-    if (temp[0] === "0") setIDlist(Object.keys(obj[temp[0]]));
-  };
 
   const sendUrlToServer = async () => {
     if (url.length === 0) {
       toast.success("Hi");
       alert("You should enter URL");
-      // console.log("error");
       return;
     }
     setIsLoading(true);
     try {
       // axios.disable("etag");
-      const response = await axios.post(
-        // "https://optimum-koala-informed.ngrok-free.app/api/data",
-        "http://localhost:4000/api/data",
-        {
-          url: url,
-        }
-      );
-      filetered(response.data);
-      setFeedData(response.data);
+      const response = await axios.post(`${backendUrl}/api/data`, {
+        url: url,
+      });
+      setIDlist(Object.keys(response.data.newData[0]));
+      setFiltered(response.data.newData);
+      setFeedData(response.data.newData);
+      setPastData(response.data.pastData);
       const urlsJSON = localStorage.getItem("urls");
       let urls = [];
       if (urlsJSON) {
@@ -150,9 +111,8 @@ const FeedFetcher = () => {
       if (!urls.includes(url)) {
         localStorage.setItem("urls", JSON.stringify([...urls, url]));
       }
-      setID("");
-      setSelected("");
-      setNew([]);
+      setID(response.data.identifier);
+      setRecord(response.data.record);
       setIsLoading(false);
     } catch (error) {
       console.log("error: ", error);
@@ -162,7 +122,21 @@ const FeedFetcher = () => {
       setFeedData();
     }
   };
-
+  useEffect(() => {
+    let _filteredData = [];
+    let _pastFiltered = [];
+    if (record.length == 0) {
+      setPastFiltered(pastData);
+      setFiltered(feedData);
+      return;
+    }
+    record.map((_record) => {
+      _filteredData.push(feedData[Number(_record)]);
+      _pastFiltered.push(pastData[Number(_record)]);
+    });
+    setPastFiltered(_pastFiltered);
+    setFiltered(_filteredData);
+  }, [record]);
   return (
     <Box bgcolor="#fff">
       <Box sx={{ flexGrow: 1 }} style={{ padding: "30px" }}>
@@ -217,7 +191,13 @@ const FeedFetcher = () => {
                   }`}
                 >
                   {urlHistory.map((_url, index) => (
-                    <ListItemButton onClick={() => setUrl(_url)} key={index}>
+                    <ListItemButton
+                      onClick={() => {
+                        setUrl(_url);
+                        setShowUrlHistory(false);
+                      }}
+                      key={index}
+                    >
                       {_url}
                     </ListItemButton>
                   ))}
@@ -233,46 +213,28 @@ const FeedFetcher = () => {
           <Grid item xs={3} display={`${hideLeft && "none"}`}>
             <Item>
               <Box m={3}>
-                <Breadcrumbs aria-label="breadcrumb">
-                  {history.map((v) => {
-                    return (
-                      <Link
-                        underline="hover"
-                        color="inherit"
-                        onClick={() => {
-                          const num = history.indexOf(v);
-                          let temp = [];
-                          if (num !== -1) {
-                            temp = history.slice(0, num + 1);
-                            setHistory(temp);
-                          }
-                          if (temp.length === 1) filetered(feedData);
-                          if (temp.length) {
-                            let val = feedData;
-                            for (let i = 1; i < temp.length; i++) {
-                              val = val[temp[i]];
-                            }
-                            filetered(val);
-                          }
-                        }}
-                      >
-                        {v}
-                      </Link>
-                    );
+                <Stack
+                  aria-label="breadcrumb"
+                  fontSize="18px"
+                  justifyContent="start"
+                  textAlign="left"
+                  flexDirection="row"
+                >
+                  Main:
+                  {record.map((v) => {
+                    return <div> {v},</div>;
                   })}
-                </Breadcrumbs>
+                </Stack>
                 <Button
                   variant="contained"
                   color="primary"
                   style={{ margin: "10px" }}
                   onClick={() => {
-                    setID("");
-                    setSelected("");
-                    setHistory(["Main"]);
+                    setID();
                     setNew([]);
+                    setRecord([]);
                     // console.log(feedData);
                     if (feedData == null) return;
-                    filetered(feedData);
                   }}
                 >
                   Reset
@@ -282,19 +244,18 @@ const FeedFetcher = () => {
                   <Select
                     labelId="demo-simple-select-label"
                     id="demo-simple-select"
-                    value={selected}
-                    label="Age"
+                    value={id}
                     onChange={(e) => {
-                      console.log("selected------: ", e.target.value, history);
-                      setHistory([...history, e.target.value]);
-                      setSelected(e.target.value);
+                      if (!record.includes(e.target.value))
+                        setRecord([...record, e.target.value]);
+                      setID(e.target.value);
                     }}
                   >
-                    {list &&
-                      list.map((v, index) => {
+                    {feedData.length &&
+                      feedData.map((_, index) => {
                         return (
-                          <MenuItem key={index} value={v}>
-                            {v}
+                          <MenuItem key={index} value={index}>
+                            {index}
                           </MenuItem>
                         );
                       })}
@@ -333,9 +294,9 @@ const FeedFetcher = () => {
               ) : (
                 <>
                   <h4>JSON Viewer</h4>
-                  {record && (
+                  {feedData && (
                     <ReactJson
-                      src={record}
+                      src={feedData}
                       theme="harmonic"
                       style={{ textAlign: "left" }}
                       collapsed
@@ -354,7 +315,7 @@ const FeedFetcher = () => {
                 padding={"0px 30px"}
               >
                 <h2>Result Table</h2>
-                <h4>
+                {/* <h4>
                   {pastData.length ? (
                     <Chip
                       icon={<GridCheckCircleIcon />}
@@ -370,28 +331,32 @@ const FeedFetcher = () => {
                       style={{ marginLeft: "20px" }}
                     />
                   )}
-                </h4>
+                </h4> */}
                 <Button
                   variant="contained"
                   color="success"
-                  onClick={() => {
-                    if (record === null) return;
-                    // console.log("history", history);
-                    setPastData(record);
-                    setPastHistory(history);
+                  onClick={async () => {
+                    const res = await axios.post(`${backendUrl}/api/register`, {
+                      feed: url,
+                      record,
+                      identifier: id,
+                    });
+                    if (res.data.status == 200) {
+                      toast.success("Successfully saved");
+                    }
                   }}
                 >
                   SAVE
                 </Button>
               </Box>
-              {id && record && (
+              {
                 <MuiTable
-                  data={record}
+                  data={filtered}
                   identifier={id}
-                  pastData={pastData}
+                  pastData={pastFiltered}
                   setNew={setNew}
                 />
-              )}
+              }
             </Item>
           </Grid>
           <Grid item xs={3} display={`${hideRight && "none"}`}>

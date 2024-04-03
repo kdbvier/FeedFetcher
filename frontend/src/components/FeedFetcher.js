@@ -36,7 +36,7 @@ import {
 } from "@mui/x-data-grid";
 import emotionStyled from "@emotion/styled";
 
-const backendUrl = "http://ec2-44-203-114-73.compute-1.amazonaws.com:4000";
+const backendUrl = "http://ec2-184-72-114-158.compute-1.amazonaws.com:4000";
 
 const Item = styled(Paper)(({ theme }) => ({
   backgroundColor: theme.palette.mode === "dark" ? "#1A2027" : "#fff",

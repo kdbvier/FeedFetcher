@@ -36,6 +36,7 @@ import {
 } from "@mui/x-data-grid";
 import emotionStyled from "@emotion/styled";
 
+// const backendUrl = "http://localhost:4000";
 const backendUrl = "https://feedfetcher.duckdns.org";
 
 const Item = styled(Paper)(({ theme }) => ({
@@ -88,6 +89,7 @@ const FeedFetcher = () => {
   const urlHistory = getHistoryURLs();
 
   const sendUrlToServer = async () => {
+    console.log("url: ", url);
     if (url.length === 0) {
       toast.success("Hi");
       alert("You should enter URL");
@@ -99,7 +101,8 @@ const FeedFetcher = () => {
       const response = await axios.post(`${backendUrl}/api/data`, {
         url: url,
       });
-      setIDlist(Object.keys(response.data.newData[0]));
+      console.log("response.data: ", response.data.newData);
+      setIDlist(Object.keys(response.data.newData[0] || []));
       setFiltered(response.data.newData);
       setFeedData(response.data.newData);
       setPastData(response.data.pastData);
@@ -251,7 +254,7 @@ const FeedFetcher = () => {
                       setID(e.target.value);
                     }}
                   >
-                    {feedData.length &&
+                    {Array.isArray(feedData) &&
                       feedData.map((_, index) => {
                         return (
                           <MenuItem key={index} value={index}>
@@ -349,14 +352,14 @@ const FeedFetcher = () => {
                   SAVE
                 </Button>
               </Box>
-              {
+              {Array.isArray(filtered) && (
                 <MuiTable
                   data={filtered}
                   identifier={id}
                   pastData={pastFiltered}
                   setNew={setNew}
                 />
-              }
+              )}
             </Item>
           </Grid>
           <Grid item xs={3} display={`${hideRight && "none"}`}>
@@ -366,7 +369,7 @@ const FeedFetcher = () => {
               ) : (
                 <>
                   <h4>New JSON</h4>
-                  {newdata.length ? (
+                  {Array.isArray(newdata) ? (
                     <ReactJson
                       src={newdata}
                       theme="harmonic"
